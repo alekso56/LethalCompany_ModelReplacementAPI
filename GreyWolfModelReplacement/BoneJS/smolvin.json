@@ -1,0 +1,59 @@
+{
+
+  "itemHolderBone": "wrist.R", //Bone to hold items with
+
+  "rootBone": "hip", //Parent bone of all other bones
+
+  "_itemHolderPositionOffset": [ 0, 0.1, 0 ], //x y z offset in itemHolderBone local space
+
+  "_positionOffSet": [ 0, 0.24, 0 ], //x y z offset in player model "spine" bone local space
+
+  //All player model bones are accounted for in this list, all bone mappings are optional, rotation offset is optional
+  "boneMap": [
+
+    //[playerModelBone, replacecmentModelBone , [quaternion rotation offset x, y, z, w optional] , [additional comma separated vars optional]]
+    [ "spine", "hip" ],
+    [ "spine.001", "spine" ],
+    [ "spine.002", "" ], //Note that spine.002 practically does not move at all
+    [ "spine.003", "chest" ],
+    [ "shoulder.L", "shoulder.L" ],
+    [ "arm.L_upper", "upper arm.L" ],
+    [ "arm.L_lower", "lower arm.L" ],
+    [ "hand.L", "wrist.L" ],
+    [ "finger5.L", "Bone.010.L" ],
+    [ "finger5.L.001", "Bone.011.L" ],
+    [ "finger4.L", "index1.L" ],
+    [ "finger4.L.001", "index2.L" ],
+    [ "finger3.L", "middle1.L" ],
+    [ "finger3.L.001", "middle2.L" ],
+    [ "finger2.L", "pointer1.L" ],
+    [ "finger2.L.001", "pointer2.L" ],
+    [ "finger1.L", "thumb1.L" ],
+    [ "finger1.L.001", "thumb2.L" ],
+    [ "shoulder.R", "shoulder.R" ],
+    [ "arm.R_upper", "upper arm.R" ],
+    [ "arm.R_lower", "lower arm.R" ],
+    [ "hand.R", "wrist.R" ],
+    [ "finger5.R", "Bone.010.R" ],
+    [ "finger5.R.001", "Bone.011.R" ],
+    [ "finger4.R", "index1.R" ],
+    [ "finger4.R.001", "index2.R" ],
+    [ "finger3.R", "middle1.R" ],
+    [ "finger3.R.001", "middle2.R" ],
+    [ "finger2.R", "pointer1.R" ],
+    [ "finger2.R.001", "pointer2.R" ],
+    [ "finger1.R", "thumb1.R" ],
+    [ "finger1.R.001", "thumb2.R" ],
+    [ "spine.004", "head" ],
+    [ "thigh.L", "upper leg.L", 0, 1, 0, 0 ],
+    [ "shin.L", "lower leg.L", 0, 1, 0, 0 ],
+    [ "foot.L", "foot.L", 0, -1, 0, 0 ],
+    [ "toe.L", "" ],
+    [ "heel.02.L", "" ],
+    [ "thigh.R", "upper leg.R", 0, 1, 0, 0 ],
+    [ "shin.R", "lower leg.R", 0, 1, 0, 0 ],
+    [ "foot.R", "foot.R", 0, -1, 0, 0 ],
+    [ "toe.R", ""],
+    [ "heel.02.R", "" ]
+  ]
+}
