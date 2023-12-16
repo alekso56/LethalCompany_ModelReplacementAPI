@@ -15,14 +15,19 @@ namespace GreyWolfModelReplacement
 {
     public class BodyReplacementGreywolf : BodyReplacementBase
     {
-        public override string boneMapFileName => "bonezonegreywolf.json";
+        private string avatar_name = "";
 
-        public override GameObject LoadAssetsAndReturnModel()
+        public BodyReplacementGreywolf(string toload)
         {
-            return LC_API.BundleAPI.BundleLoader.GetLoadedAsset<GameObject>("assets/greywolf/greywolf.prefab");
+            this.avatar_name = toload;
         }
 
-        public override void AddModelScripts()
+        protected override GameObject LoadAssetsAndReturnModel()
+        {
+            return LC_API.BundleAPI.BundleLoader.GetLoadedAsset<GameObject>("Assets/ModelReplacementAPI/AssetsToBuild/" + avatar_name + ".prefab");
+        }
+
+        protected override void AddModelScripts()
         {
 
             var HairBones = replacementModel.GetComponentsInChildren<Transform>().Where(x => x.name.Contains("FrontHair") || x.name.Contains("SideHair"));

@@ -1,17 +1,14 @@
 ﻿using BepInEx;
-using System.Linq;
-using System.Runtime.InteropServices;
-using Zeekerss;
-using Zeekerss.Core;
-using Zeekerss.Core.Singletons;
-using System;
 using HarmonyLib;
-using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
-using System.Reflection;
 using GameNetcodeStuff;
 using ModelReplacement;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
+using System.Collections.Generic;
+using System.Linq;
+using System;
+using UnityEngine.Audio;
 
 //using System.Numerics;
 
@@ -19,20 +16,14 @@ namespace GreyWolfModelReplacement
 {
 
 
-
     [BepInPlugin("GreywolfModelReplacement", "Greywolf Model", "1.0")]
     [BepInDependency("meow.ModelReplacementAPI", BepInDependency.DependencyFlags.HardDependency)]
     public class Plugin : BaseUnityPlugin
     {
-
+        static List<string> hasLoaded = new List<string>();
         private void Awake()
         {
             // Plugin startup logic
-
-            ModelReplacementAPI.RegisterSuitModelReplacement("Green Suit", typeof(BodyReplacementGreywolf));
-            ModelReplacementAPI.RegisterSuitModelReplacement("Default", typeof(BodyReplacementEruqyuna));
-            ModelReplacementAPI.RegisterSuitModelReplacement("Orange suit", typeof(BodyReplacementEruqyuna));
-            ModelReplacementAPI.RegisterSuitModelReplacement("Pajama suit", typeof(BodyReplacementGreywolf));
 
             //
 
@@ -40,8 +31,6 @@ namespace GreyWolfModelReplacement
             harmony.PatchAll();
             Logger.LogInfo($"Plugin {"GreywolfModelReplacement"} is loaded!");
         }
-
-
 
         [HarmonyPatch(typeof(PlayerControllerB))]
         public class PlayerControllerBPatch
@@ -51,12 +40,31 @@ namespace GreyWolfModelReplacement
             [HarmonyPostfix]
             public static void UpdatePatch(ref PlayerControllerB __instance)
             {
-                ModelReplacementAPI.SetPlayerModelReplacement(__instance, typeof(BodyReplacementEruqyuna));
+                if (__instance.playerUsername != null) {
+                    if (hasLoaded.Contains(__instance.playerUsername)) return;
+                    hasLoaded.Add(__instance.playerUsername);
+                }
+                
+                BodyReplacementGreywolf? body = createNewBody(__instance.playerSteamId + "");
+                if(body == null) {
+                    body = createNewBody(__instance.playerUsername + "");
+                }
 
+                if(body != null) {
+                    ModelReplacementAPI.SetPlayerModelReplacement(__instance, body);
+                }
+
+                Debug.Log("No body found for " + __instance.playerSteamId + " : " + __instance.playerUsername);
             }
 
         }
 
+        public static BodyReplacementGreywolf? createNewBody(string toload) {
+            if (LC_API.BundleAPI.BundleLoader.GetLoadedAsset<GameObject>("Assets/ModelReplacementAPI/AssetsToBuild/" + toload + ".prefab") != null) {
+               return new BodyReplacementGreywolf(toload);
+            }
+            return null;
+        }
 
 
     }
