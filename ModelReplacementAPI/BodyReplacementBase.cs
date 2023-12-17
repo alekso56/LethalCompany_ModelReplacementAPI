@@ -50,7 +50,7 @@ namespace ModelReplacement
         /// Loads necessary assets from assetBundle, perform any necessary modifications on the replacement character model and return it.
         /// </summary>
         /// <returns>Model replacement GameObject</returns>
-        protected abstract GameObject LoadAssetsAndReturnModel();
+        protected abstract GameObject LoadAssetsAndReturnModel(string username,string steamid);
 
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace ModelReplacement
             ModelReplacementAPI.Instance.Logger.LogInfo($"Awake {controller.playerUsername}");
 
             // Load model
-            replacementModel = LoadAssetsAndReturnModel();
+            replacementModel = LoadAssetsAndReturnModel(controller.playerUsername,controller.playerSteamId.ToString());
 
             if(replacementModel == null)
             {

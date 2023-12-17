@@ -15,16 +15,25 @@ namespace GreyWolfModelReplacement
 {
     public class BodyReplacementGreywolf : BodyReplacementBase
     {
-        private string avatar_name = "";
-
-        public BodyReplacementGreywolf(string toload)
+        protected override GameObject LoadAssetsAndReturnModel(string username,string steamid)
         {
-            this.avatar_name = toload;
-        }
-
-        protected override GameObject LoadAssetsAndReturnModel()
-        {
-            return LC_API.BundleAPI.BundleLoader.GetLoadedAsset<GameObject>("Assets/ModelReplacementAPI/AssetsToBuild/" + avatar_name + ".prefab");
+            string avatar_name = "";
+            if (hasBody(steamid) != null)
+            {
+                avatar_name = steamid;
+            }
+            else if (username != null && hasBody(username) != null)
+            {
+                avatar_name = username;
+            }
+            if (avatar_name.Length == 0) {
+                Debug.Log("No body found for " + steamid + " : " + username);
+                return hasBody("76561198005992881");
+            }
+            GameObject asset = hasBody(avatar_name);
+            Debug.Log(asset);
+            Debug.Log("assets/modelreplacementapi/assetstobuild/" + avatar_name + ".prefab");
+            return asset;
         }
 
         protected override void AddModelScripts()
@@ -45,6 +54,9 @@ namespace GreyWolfModelReplacement
             });
         }
 
- 
+        public static GameObject hasBody(string toload)
+        {
+           return LC_API.BundleAPI.BundleLoader.GetLoadedAsset<GameObject>("assets/modelreplacementapi/assetstobuild/" + toload + ".prefab");
+        }
     }
 }

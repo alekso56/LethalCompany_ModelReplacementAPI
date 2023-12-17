@@ -164,14 +164,14 @@ namespace ModelReplacement
         /// </summary>
         /// <param name="player"></param>
         /// <param name="type">typeof body replacement class. Must inherit from BodyReplacementBase</param>
-        public static void SetPlayerModelReplacement(PlayerControllerB player, BodyReplacementBase cla)
+        public static void SetPlayerModelReplacement(PlayerControllerB player, Type cla)
         {
             var a = player.thisPlayerBody.gameObject.GetComponent<BodyReplacementBase>();
             int suitID = player.currentSuitID;
             string suitName = StartOfRound.Instance.unlockablesList.unlockables[suitID].unlockableName;
             if (a != null)
             {
-                if (a.GetType() == cla.GetType()) //Suit has not changed model
+                if (a.GetType() == cla) //Suit has not changed model
                 {
 
                     if (a.suitName != suitName)
@@ -190,7 +190,7 @@ namespace ModelReplacement
                 }
             }
 
-            var replacecment = player.thisPlayerBody.gameObject.AddComponent(cla.GetType()) as BodyReplacementBase;
+            var replacecment = player.thisPlayerBody.gameObject.AddComponent(cla) as BodyReplacementBase;
             replacecment.suitName = suitName;
         }
         /// <summary>
@@ -285,7 +285,7 @@ namespace ModelReplacement
 
                     if (RegisteredModelReplacementOverride != null)
                     {
-                        SetPlayerModelReplacement(__instance, (BodyReplacementBase)Activator.CreateInstance(RegisteredModelReplacementOverride));
+                        SetPlayerModelReplacement(__instance, RegisteredModelReplacementOverride);
                         return;
                     }
 
@@ -295,11 +295,11 @@ namespace ModelReplacement
 
                     if (RegisteredModelReplacements.ContainsKey(suitName))
                     {
-                        SetPlayerModelReplacement(__instance, (BodyReplacementBase)Activator.CreateInstance(RegisteredModelReplacements[suitName]));
+                        SetPlayerModelReplacement(__instance, RegisteredModelReplacements[suitName]);
                     }
                     else if (RegisteredModelReplacementDefault != null)
                     {
-                        SetPlayerModelReplacement(__instance, (BodyReplacementBase)Activator.CreateInstance(RegisteredModelReplacementDefault));
+                        SetPlayerModelReplacement(__instance, RegisteredModelReplacementDefault);
                     }
                     else
                     {

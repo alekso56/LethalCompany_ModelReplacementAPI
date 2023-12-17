@@ -23,10 +23,7 @@ namespace GreyWolfModelReplacement
         static List<string> hasLoaded = new List<string>();
         private void Awake()
         {
-            // Plugin startup logic
-
-            //
-
+            ModelReplacementAPI.RegisterModelReplacementOverride(typeof(BodyReplacementGreywolf));
             Harmony harmony = new Harmony("GreywolfModelReplacement");
             harmony.PatchAll();
             Logger.LogInfo($"Plugin {"GreywolfModelReplacement"} is loaded!");
@@ -44,27 +41,17 @@ namespace GreyWolfModelReplacement
                     if (hasLoaded.Contains(__instance.playerUsername)) return;
                     hasLoaded.Add(__instance.playerUsername);
                 }
-                
-                BodyReplacementGreywolf? body = createNewBody(__instance.playerSteamId + "");
-                if(body == null) {
-                    body = createNewBody(__instance.playerUsername + "");
+                if (BodyReplacementGreywolf.hasBody(__instance.playerSteamId.ToString()) != null || (__instance.playerUsername != null && BodyReplacementGreywolf.hasBody(__instance.playerUsername)))
+                {
+                    ModelReplacementAPI.SetPlayerModelReplacement(__instance, typeof(BodyReplacementGreywolf));
                 }
-
-                if(body != null) {
-                    ModelReplacementAPI.SetPlayerModelReplacement(__instance, body);
-                }
-
-                Debug.Log("No body found for " + __instance.playerSteamId + " : " + __instance.playerUsername);
+               
+               
             }
 
         }
 
-        public static BodyReplacementGreywolf? createNewBody(string toload) {
-            if (LC_API.BundleAPI.BundleLoader.GetLoadedAsset<GameObject>("Assets/ModelReplacementAPI/AssetsToBuild/" + toload + ".prefab") != null) {
-               return new BodyReplacementGreywolf(toload);
-            }
-            return null;
-        }
+        
 
 
     }
