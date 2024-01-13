@@ -41,12 +41,9 @@ namespace GreyWolfModelReplacement
                     if (hasLoaded.Contains(__instance.playerUsername)) return;
                     hasLoaded.Add(__instance.playerUsername);
                 }
-                if (BodyReplacementGreywolf.hasBody(__instance.playerSteamId.ToString()) != null || (__instance.playerUsername != null && BodyReplacementGreywolf.hasBody(__instance.playerUsername)))
-                {
-                    ModelReplacementAPI.SetPlayerModelReplacement(__instance, typeof(BodyReplacementGreywolf));
-                }
-               
-               
+                ModelReplacementAPI.SetPlayerModelReplacement(__instance, typeof(BodyReplacementGreywolf));
+
+
             }
 
         }

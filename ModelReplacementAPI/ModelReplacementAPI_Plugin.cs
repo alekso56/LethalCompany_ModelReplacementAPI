@@ -221,7 +221,6 @@ namespace ModelReplacement
                 if (a == null) { return; }
                 if (a.RenderBodyReplacement())
                 {
-                    if (a.renderLocalDebug && !a.renderModel) { return; }
 
                     Transform parentObject = a.avatar.itemHolder;
 
@@ -307,50 +306,6 @@ namespace ModelReplacement
                     }
                 }
                 catch (Exception e) { }
-            }
-
-            [HarmonyPatch("DamagePlayerFromOtherClientClientRpc")]
-            [HarmonyPrefix]
-            public static void DamagePlayerFromOtherClientClientRpc(ref PlayerControllerB __instance, int damageAmount, Vector3 hitDirection, int playerWhoHit, int newHealthAmount)
-            {
-                PlayerControllerB _playerWhoHit = __instance.playersManager.allPlayerScripts[playerWhoHit];
-                if (_playerWhoHit == null)
-                {
-                    return;
-                }
-                var a = _playerWhoHit.thisPlayerBody.gameObject.GetComponent<BodyReplacementBase>();
-                if (a) { a.OnHitAlly(__instance, __instance.isPlayerDead); }
-            }
-
-            [HarmonyPatch("DamagePlayerClientRpc")]
-            [HarmonyPrefix]
-            public static void DamagePlayerClientRpc(ref PlayerControllerB __instance, int damageNumber, int newHealthAmount)
-            {
-                if (__instance == null)
-                {
-                    return;
-                }
-                var a = __instance.thisPlayerBody.gameObject.GetComponent<BodyReplacementBase>();
-                Console.WriteLine($"PLAYER TAKE DAMAGE {__instance.playerUsername}");
-                if (a) { a.OnDamageTaken(__instance.isPlayerDead); }
-            }
-
-        }
-
-        [HarmonyPatch(typeof(EnemyAI))]
-        public class EnemyAIPatch
-        {
-            [HarmonyPatch("HitEnemy")]
-            [HarmonyPrefix]
-            public static void HitEnemy(ref EnemyAI __instance, int force = 1, PlayerControllerB playerWhoHit = null, bool playHitSFX = false)
-            {
-                if (playerWhoHit == null)
-                {
-                    return;
-                }
-
-                var a = playerWhoHit.thisPlayerBody.gameObject.GetComponent<BodyReplacementBase>();
-                if (a) { a.OnHitEnemy(__instance.isEnemyDead); }
             }
 
         }

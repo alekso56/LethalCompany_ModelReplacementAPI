@@ -16,6 +16,8 @@ using UnityEngine.InputSystem.HID;
 using ModelReplacement.AvatarBodyUpdater;
 using UnityEngine.Pool;
 using Unity.Netcode;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace ModelReplacement
 {
@@ -23,14 +25,10 @@ namespace ModelReplacement
     {
         private bool localPlayer => (ulong)StartOfRound.Instance.thisClientPlayerId == controller.playerClientId;
 
-        //Debug variables, if renderLocalDebug is true, renderBase and renderModel will decide what to render
-        public bool renderLocalDebug = false;
-        public bool renderBase = false;
-        public bool renderModel = false;
-
         //Base components
         public AvatarUpdater avatar { get; private set; }
         public PlayerControllerB controller { get; private set; }
+
         protected GameObject replacementModel;
         public string suitName { get; set; } = "";
 
@@ -43,6 +41,7 @@ namespace ModelReplacement
         private MeshRenderer nameTagObj = null;
         private MeshRenderer nameTagObj2 = null;
         private bool moreCompanyCosmeticsReparented = false;
+  
 
         #region Virtual and Abstract Methods
 
@@ -50,8 +49,13 @@ namespace ModelReplacement
         /// Loads necessary assets from assetBundle, perform any necessary modifications on the replacement character model and return it.
         /// </summary>
         /// <returns>Model replacement GameObject</returns>
-        protected abstract GameObject LoadAssetsAndReturnModel(string username,string steamid);
+        protected abstract GameObject LoadAssetsAndReturnModel(string steamid);
 
+        /// <summary>
+        /// Loads necessary assets from assetBundle, perform any necessary modifications on the replacement character model and return it.
+        /// </summary>
+        /// <returns>Model replacement GameObject</returns>
+        protected abstract bool PreloadModelForSteamID(string steamid);
 
         /// <summary>
         /// AssetBundles do not supply scripts that are not supported by the base game. Override to set custom scripts. 
@@ -61,121 +65,102 @@ namespace ModelReplacement
 
         }
 
-        protected internal virtual void OnHitEnemy(bool dead)
-        {
-            Console.WriteLine($"PLAYER HIT ENEMY {controller.playerUsername}");
-        }
-
-        protected internal virtual void OnHitAlly(PlayerControllerB ally,  bool dead)
-        {
-            Console.WriteLine($"PLAYER HIT ALLY {controller.playerUsername}");
-        }
-
-        protected internal virtual void OnDamageTaken(bool dead)
-        {
-            Console.WriteLine($"PLAYER TAKE DAMAGE  {controller.playerUsername}");
-        }
-        protected internal virtual void OnDamageTakenByAlly(PlayerControllerB ally, bool dead)
-        {
-            Console.WriteLine($"PLAYER TAKE DAMAGE BY ALLY {controller.playerUsername}");
-        }
-
-        protected internal virtual void OnEmoteStart(int emoteId)
-        {
-            Console.WriteLine($"PLAYER EMOTE START {controller.playerUsername} ID {emoteId}");
-        }
-        protected internal virtual void OnEmoteEnd()
-        {
-            Console.WriteLine($"PLAYER EMOTE END {controller.playerUsername}");
-        }
-
 
         #endregion
 
         #region Base Logic
+        static string steamid;
 
         void Awake()
         {
-            
             controller = base.GetComponent<PlayerControllerB>();
             ModelReplacementAPI.Instance.Logger.LogInfo($"Awake {controller.playerUsername}");
-
-            // Load model
-            replacementModel = LoadAssetsAndReturnModel(controller.playerUsername,controller.playerSteamId.ToString());
-
-            if(replacementModel == null)
-            {
-                ModelReplacementAPI.Instance.Logger.LogFatal("LoadAssetsAndReturnModel() returned null. Verify that your assetbundle works and your asset name is correct. ");
-            }
-
-
-            // Fix Materials
-            Renderer[] renderers = replacementModel.GetComponentsInChildren<Renderer>();
-            Material gameMat = controller.thisPlayerModel.GetComponent<SkinnedMeshRenderer>().sharedMaterial;
-            gameMat = new Material(gameMat); // Copy so that shared material isn't accidently changed by overriders of GetReplacementMaterial()
-            Dictionary<Material, Material> matMap = new();
-            List<Material> materials = ListPool<Material>.Get();
-            foreach (Renderer renderer in renderers)
-            {
-                renderer.GetSharedMaterials(materials);
-                for (int i = 0; i < materials.Count; i++)
-                {
-                    Material mat = materials[i];
-                    if (!matMap.TryGetValue(mat, out var replacementMat))
-                    {
-                        matMap[mat] = replacementMat = GetReplacementMaterial(gameMat, mat);
-                    }
-                    materials[i] = replacementMat;
-                }
-                renderer.SetMaterials(materials);
-            }
-            ListPool<Material>.Release(materials);
-
-            // Set scripts missing from assetBundle
-            try
-            {
-                AddModelScripts();
-            }
-            catch (Exception e)
-            {
-                ModelReplacementAPI.Instance.Logger.LogError($"Could not set all model scripts.\n Error: {e.Message}");
-            }
-            
-
-            // Instantiate model
-            replacementModel = UnityEngine.Object.Instantiate<GameObject>(replacementModel);
-            replacementModel.name += $"({controller.playerUsername})";
-            SetRenderers(false); //Initializing with renderers disabled prevents model flickering for local player
-            replacementModel.transform.localPosition = new Vector3(0, 0, 0);
-            replacementModel.SetActive(true);
-
-            // Sets y extents to the same size for player body and extents.
-            var playerBodyExtents = controller.thisPlayerModel.bounds.extents;
-            float scale = playerBodyExtents.y / GetBounds().extents.y;
-            replacementModel.transform.localScale *= scale;
-
-
-            // Assign the avatar
-            avatar = new AvatarUpdater();
-            ragdollAvatar = new AvatarUpdater();
-            avatar.AssignModelReplacement(controller.gameObject, replacementModel);
-
-
-            // Misc fixes
-            var gameObjects = controller.gameObject.GetComponentsInChildren<MeshRenderer>();
-            nameTagObj = gameObjects.Where(x => x.gameObject.name == "LevelSticker").First();
-            nameTagObj2 = gameObjects.Where(x => x.gameObject.name == "BetaBadge").First();
+            UnityThread.initUnityThread();
+            steamid = controller.playerSteamId.ToString();
+            Thread oThread = new Thread(new ThreadStart(getInformation));
+            oThread.Start();
             ModelReplacementAPI.Instance.Logger.LogInfo($"AwakeEnd {controller.playerUsername}");
-
         }
 
-        void Update()
+        private void getInformation()
         {
-            // Local/Nonlocal renderer logic
-            if (!renderLocalDebug)
+            var result = PreloadModelForSteamID(steamid);
+            if (!result) return;
+            UnityThread.executeInUpdate(() =>
             {
+                replacementModel = LoadAssetsAndReturnModel(steamid);
+                if (replacementModel == null)
+                {
+                    ModelReplacementAPI.Instance.Logger.LogFatal("LoadAssetsAndReturnModel() returned null. Verify that your assetbundle works and your asset name is correct. " + steamid);
+                    return;
+                }
 
-                if (RenderBodyReplacement()) {
+                ModelReplacementAPI.Instance.Logger.LogInfo("Sucessfully loaded " + replacementModel.name);
+               
+                // Fix Materials
+                Renderer[] renderers = replacementModel.GetComponentsInChildren<Renderer>();
+                Material gameMat = controller.thisPlayerModel.GetComponent<SkinnedMeshRenderer>().sharedMaterial;
+                gameMat = new Material(gameMat); // Copy so that shared material isn't accidently changed by overriders of GetReplacementMaterial()
+                Dictionary<Material, Material> matMap = new();
+                List<Material> materials = ListPool<Material>.Get();
+                foreach (Renderer renderer in renderers)
+                {
+                    renderer.GetSharedMaterials(materials);
+                    for (int i = 0; i < materials.Count; i++)
+                    {
+                        Material mat = materials[i];
+                        if (!matMap.TryGetValue(mat, out var replacementMat))
+                        {
+                            matMap[mat] = replacementMat = GetReplacementMaterial(gameMat, mat);
+                        }
+                        materials[i] = replacementMat;
+                    }
+                    renderer.SetMaterials(materials);
+                }
+                ListPool<Material>.Release(materials);
+
+                // Set scripts missing from assetBundle
+                try
+                {
+                    AddModelScripts();
+                }
+                catch (Exception e)
+                {
+                    ModelReplacementAPI.Instance.Logger.LogError($"Could not set all model scripts.\n Error: {e.Message}");
+                }
+
+
+                // Instantiate model
+                replacementModel = UnityEngine.Object.Instantiate<GameObject>(replacementModel);
+                replacementModel.name += $"({controller.playerUsername})";
+                SetRenderers(false); //Initializing with renderers disabled prevents model flickering for local player
+                replacementModel.transform.localPosition = new Vector3(0, 0, 0);
+                replacementModel.SetActive(true);
+
+                // Sets y extents to the same size for player body and extents.
+                var playerBodyExtents = controller.thisPlayerModel.bounds.extents;
+                float scale = playerBodyExtents.y / GetBounds().extents.y;
+                replacementModel.transform.localScale *= scale;
+
+
+                // Assign the avatar
+                avatar = new AvatarUpdater();
+                ragdollAvatar = new AvatarUpdater();
+                avatar.AssignModelReplacement(controller.gameObject, replacementModel);
+
+
+                // Misc fixes
+                var gameObjects = controller.gameObject.GetComponentsInChildren<MeshRenderer>();
+                nameTagObj = gameObjects.Where(x => x.gameObject.name == "LevelSticker").First();
+                nameTagObj2 = gameObjects.Where(x => x.gameObject.name == "BetaBadge").First();
+                ModelReplacementAPI.Instance.Logger.LogInfo("Executed.");
+            });
+        }
+
+        void runUpdate() {
+            if (replacementModel == null) return;
+                if (RenderBodyReplacement())
+                {
                     SetRenderers(true);
                     controller.thisPlayerModel.enabled = false; // Don't render original body if non-local player
                     controller.thisPlayerModelLOD1.enabled = false;
@@ -187,60 +172,35 @@ namespace ModelReplacement
                 {
                     SetRenderers(false); // Don't render model replacement if local player
                 }
-            }
-            else
-            {
-                foreach (Renderer renderer in controller.gameObject.GetComponentsInChildren<SkinnedMeshRenderer>())
+
+                // Handle Ragdoll creation and destruction
+                GameObject deadBody = null;
+                try
                 {
-                    renderer.enabled = renderBase;
+                    deadBody = controller.deadBody.gameObject;
                 }
-                SetRenderers(renderModel);
-            }
+                catch { }
+                if ((deadBody) && (replacementDeadBody == null))
+                {
+                    CreateAndParentRagdoll(controller.deadBody);
+                }
+                if (replacementDeadBody && (deadBody == null))
+                {
+                    Destroy(replacementDeadBody);
+                    replacementDeadBody = null;
+                }
 
-            // Handle Ragdoll creation and destruction
-            GameObject deadBody = null;
-            try
-            {
-                deadBody = controller.deadBody.gameObject;
-            }
-            catch { }
-            if ((deadBody) && (replacementDeadBody == null))
-            {
-                CreateAndParentRagdoll(controller.deadBody);
-            }
-            if ((replacementDeadBody) && (deadBody == null))
-            {
-                Destroy(replacementDeadBody);
-                replacementDeadBody = null;
-            }
-
-            // Update replacement models
-            avatar.UpdateModel();
-            ragdollAvatar.UpdateModel();
-            AttemptReparentMoreCompanyCosmetics();
-
-            //Emotes
-            previousDanceNumber = danceNumber;
-            int danceHash = controller.playerBodyAnimator.GetCurrentAnimatorStateInfo(1).fullPathHash;
-            if (controller.performingEmote)
-            {
-               
-                if (danceHash == -462656950) { danceNumber = 1; }
-                else if (danceHash == 2103786480) { danceNumber = 2; }
-                else { danceNumber = 3; }
-            }
-            else { danceNumber = 0; }
-            if (danceNumber != previousDanceNumber)
-            {
-                if (danceNumber != 0) { OnEmoteStart(danceNumber); }
-                else { OnEmoteEnd(); }
-            }
-            //Console.WriteLine($"{danceNumber} {danceHash}");
-
+                // Update replacement models
+                avatar.UpdateModel();
+                ragdollAvatar.UpdateModel();
+                AttemptReparentMoreCompanyCosmetics();
         }
 
-        int danceNumber = 0;
-        int previousDanceNumber = 0;
+        void Update()
+        {
+            runUpdate();
+        }
+
 
         void OnDestroy()
         {
@@ -248,13 +208,15 @@ namespace ModelReplacement
             controller.thisPlayerModel.enabled = true;
             controller.thisPlayerModelLOD1.enabled = true;
             controller.thisPlayerModelLOD2.enabled = true;
-           
+
             nameTagObj.enabled = true;
             nameTagObj2.enabled = true;
             AttemptUnparentMoreCompanyCosmetics();
 
-            Destroy(replacementModel);
-            Destroy(replacementDeadBody);
+            if (replacementModel != null) {
+             Destroy(replacementModel);
+             Destroy(replacementDeadBody);
+            }
         }
 
         #endregion
@@ -267,7 +229,7 @@ namespace ModelReplacement
             "GUI/",
             "Sprites/",
             "UI/",
-            "Unlit/",
+            "Unlit/"
         };
 
         /// <summary>
@@ -277,8 +239,7 @@ namespace ModelReplacement
         /// <param name="modelMaterial">The material on the replacing model.</param>
         /// <returns>The replacement material created from the <see cref="gameMaterial"/> and the <see cref="modelMaterial"/></returns>
         protected virtual Material GetReplacementMaterial(Material gameMaterial, Material modelMaterial)
-        {
-        
+        {     
             if (shaderPrefixWhitelist.Any(prefix => modelMaterial.shader.name.StartsWith(prefix)))
             {
                 return modelMaterial;

@@ -10,30 +10,26 @@ using GameNetcodeStuff;
 using UnityEngine.PlayerLoop;
 using System.Reflection;
 using ModelReplacement;
+using BepInEx;
 
 namespace GreyWolfModelReplacement
 {
     public class BodyReplacementGreywolf : BodyReplacementBase
     {
-        protected override GameObject LoadAssetsAndReturnModel(string username,string steamid)
+        protected override GameObject LoadAssetsAndReturnModel(string steamid)
         {
-            string avatar_name = "";
-            if (hasBody(steamid) != null)
-            {
-                avatar_name = steamid;
-            }
-            else if (username != null && hasBody(username) != null)
-            {
-                avatar_name = username;
-            }
-            if (avatar_name.Length == 0) {
-                Debug.Log("No body found for " + steamid + " : " + username);
-                return hasBody("76561198005992881");
-            }
-            GameObject asset = hasBody(avatar_name);
-            Debug.Log(asset);
-            Debug.Log("assets/modelreplacementapi/assetstobuild/" + avatar_name + ".prefab");
-            return asset;
+            ModelReplacementAPI.Instance.Logger.LogInfo("Body found for " + steamid);
+            string dir1 = Path.Combine(Paths.PluginPath, "Bundles", steamid);
+            LC_API.BundleAPI.LoadedAssetBundle bundle = LC_API.BundleAPI.BundleLoader.LoadAssetBundle(dir1);
+            GameObject body = bundle.GetAsset<GameObject>("assets/modelreplacementapi/assetstobuild/" + steamid + ".prefab");
+            ModelReplacementAPI.Instance.Logger.LogInfo("PostLoad " + steamid);
+            return body;
+        }
+
+        protected override bool PreloadModelForSteamID(string steamid)
+        {
+            ModelReplacementAPI.Instance.Logger.LogInfo("Start download: " + steamid);
+            return API.getFileBySteamIDAsync(steamid);
         }
 
         protected override void AddModelScripts()
@@ -52,11 +48,6 @@ namespace GreyWolfModelReplacement
                 dynBone.m_Radius = 0.05f;
                 dynBone.m_Gravity = new Vector3(0, -0.01f, 0);
             });
-        }
-
-        public static GameObject hasBody(string toload)
-        {
-           return LC_API.BundleAPI.BundleLoader.GetLoadedAsset<GameObject>("assets/modelreplacementapi/assetstobuild/" + toload + ".prefab");
         }
     }
 }
